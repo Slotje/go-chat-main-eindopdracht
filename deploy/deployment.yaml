@@ -17,6 +17,6 @@ spec:
     spec:
       containers:
         - name: go-chat-container
-          image: ghcr.io/Slotje/go-chat-main:latest
+          image: ghcr.io/slotje/go-chat-main-eindopdracht:latest
           ports:
             - containerPort: 8080
