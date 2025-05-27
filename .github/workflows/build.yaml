@@ -67,7 +67,7 @@ jobs:
           fi
 
       # -------------------------
-      # Docker build & push
+      # Docker build & push 1
       # -------------------------
 
       - name: Create lowercase image name
