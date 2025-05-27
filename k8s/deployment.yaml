@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-chat-app
+  namespace: default
+  labels:
+    app: go-chat
+    version: v1.0.0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: go-chat
+  template:
+    metadata:
+      labels:
+        app: go-chat
+    spec:
+      containers:
+        - name: go-chat
+          image: ghcr.io/slotje/go-chat-main-eindopdracht:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: PORT
+              value: "80"
+            - name: ENV
+              value: "production"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      imagePullSecrets:
+        - name: ghcr-secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-chat-service
+  namespace: default
+  labels:
+    app: go-chat
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app: go-chat
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-chat-ingress
+  namespace: default
+  labels:
+    app: go-chat
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/websocket-services: "go-chat-service"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  tls:
+    - hosts:
+        - go-chat.jouw-domein.com
+      secretName: go-chat-tls
+  rules:
+    - host: go-chat.jouw-domein.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: go-chat-service
+                port:
+                  number: 80
+
+---
+# Secret voor GHCR toegang
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ghcr-secret
+  namespace: default
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: eyJhdXRocyI6eyJnaGNyLmlvIjp7InVzZXJuYW1lIjoic2xvdGplIiwicGFzc3dvcmQiOiJnaHBfZWdVUE0yanppVzhGY1ZEbU9kOTdZMndmdVdsU1MzMXB2dlNlIiwiYXV0aCI6ImMyeHZkR3BsT21kb2NGOWxaMVZRVFRKcWVtbFhPRVpqVmtSdFQyUTVOMWt5ZDJaMVYyeFRVek14Y0haMlUyVT0ifX19
